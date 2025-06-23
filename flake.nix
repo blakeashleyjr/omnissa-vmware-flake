@@ -89,6 +89,12 @@
             install -Dm644 usr/share/applications/vmware-view.desktop \
                           $out/share/applications/vmware-view.desktop
           fi
+          
+          # Also copy horizon-client.desktop if it exists
+          if [ -f usr/share/applications/horizon-client.desktop ]; then
+            install -Dm644 usr/share/applications/horizon-client.desktop \
+                          $out/share/applications/horizon-client.desktop
+          fi
 
           runHook postInstall
         '';
@@ -104,6 +110,14 @@
           "libxml2.so.2"
         ];
 
+        # Fix hardcoded paths in scripts
+        preFixup = ''
+          # Fix paths in the horizon-client script
+          substituteInPlace $out/usr/bin/horizon-client \
+            --replace "/usr/lib/omnissa" "$out/usr/lib/omnissa" \
+            --replace "/usr/bin" "$out/usr/bin"
+        '';
+        
         # Create wrapper scripts
         postFixup = ''
           # Create bin directory
