@@ -71,6 +71,7 @@
           pkgs.glib
           pkgs.gtk3
           pkgs.atk
+          pkgs.gdk-pixbuf
           pkgs.cairo
           pkgs.pango
           pkgs.fontconfig
