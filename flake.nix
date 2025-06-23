@@ -20,7 +20,6 @@
 
       horizon-client = pkgs.stdenv.mkDerivation {
         pname   = "omnissa-horizon-client";
-        version = horizonVersion;
 
         inherit src;
         sourceRoot = ".";
