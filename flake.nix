@@ -41,7 +41,7 @@
         # Run-time deps discovered by `autoPatchelfHook`
         buildInputs = with pkgs; [
           gtk3 # libgtk-3-0
-          libxml2
+          libxml2.out
           openssl
           nspr
           nss
