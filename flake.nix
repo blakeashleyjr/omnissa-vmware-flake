@@ -7,6 +7,9 @@
   };
 
   outputs = { self, nixpkgs, flake-utils, ... }:
+    let
+      horizonVersion = "2503-8.15.0-14256322247";
+    in
     flake-utils.lib.eachDefaultSystem (system:
     let
       pkgs = import nixpkgs {
@@ -14,12 +17,13 @@
         config.allowUnfree = true;
       };
       src = pkgs.fetchurl {
-        url = "hhttps://download3.omnissa.com/software/CART26FQ1_LIN64_DEBPKG_2503/Omnissa-Horizon-Client-2503-8.15.0-14256322247.x64.deb";
+        url = "https://download3.omnissa.com/software/CART26FQ1_LIN64_DEBPKG_2503/Omnissa-Horizon-Client-2503-8.15.0-14256322247.x64.deb";
         sha256 = "sha256-D4xE5cXiPODlUrEqag/iHkZjEkpxY/rOABwx4xsKRV0=";
       };
 
       horizon-client = pkgs.stdenv.mkDerivation {
         pname   = "omnissa-horizon-client";
+        version = horizonVersion;
 
         inherit src;
         sourceRoot = ".";
@@ -32,7 +36,7 @@
         nativeBuildInputs = [ pkgs.autoPatchelfHook pkgs.patchelf pkgs.binutils ];
         # Run-time deps discovered by `autoPatchelfHook`
         buildInputs = with pkgs; [
-          gtk3_gtk3   # libgtk-3-0
+          gtk3   # libgtk-3-0
           libxml2
           openssl
           nspr nss
@@ -70,10 +74,6 @@
       packages.horizon-client = horizon-client;
       packages.default        = horizon-client;
 
-      overlays.horizon-client = final: prev: {
-        omnissa-horizon-client = horizon-client;
-      };
-
       devShells.default = pkgs.mkShell {
         nativeBuildInputs = [ pkgs.autoPatchelfHook pkgs.patchelf ];
         buildInputs = horizon-client.buildInputs;
@@ -82,7 +82,9 @@
           export HORIZON_ROOT=${horizon-client}
         '';
       };
-
+    })
+    // {
+      # flake-level exports that don't vary per system
       nixosModules.horizon-client = { lib, config, pkgs, ... }:
       let
         cfg = config.services.horizon-client;
@@ -91,7 +93,7 @@
           enable = lib.mkEnableOption "Omnissa Horizon Client";
           package = lib.mkOption {
             type        = lib.types.package;
-            default     = horizon-client;
+            default     = self.packages.${pkgs.system}.horizon-client;
             description = "Which package to install.";
           };
           extraEnv = lib.mkOption {
@@ -114,10 +116,13 @@
           environment.variables = cfg.extraEnv;
         };
       };
-    })
-    // {
-      # flake-level exports that don’t vary per system
+      
       nixosModules.default = self.nixosModules.horizon-client;
-      overlays.default     = self.overlays.horizon-client;
+      
+      overlays.horizon-client = final: prev: {
+        omnissa-horizon-client = self.packages.${prev.system}.horizon-client;
+      };
+      
+      overlays.default = self.overlays.horizon-client;
     };
 }
