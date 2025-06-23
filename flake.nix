@@ -19,128 +19,129 @@
         inherit system;
         config.allowUnfree = true;
       };
-      src = pkgs.fetchurl {
-        url = "https://download3.omnissa.com/software/CART26FQ1_LIN64_DEBPKG_2503/Omnissa-Horizon-Client-2503-8.15.0-14256322247.x64.deb";
-        sha256 = "sha256-D4xE5cXiPODlUrEqag/iHkZjEkpxY/rOABwx4xsKRV0=";
+      
+      omnissaHorizonClientFiles = pkgs.stdenv.mkDerivation {
+        pname = "omnissa-horizon-files";
+        version = horizonVersion;
+        
+        src = pkgs.fetchurl {
+          url = "https://download3.omnissa.com/software/CART26FQ1_LIN64_DEBPKG_2503/Omnissa-Horizon-Client-2503-8.15.0-14256322247.x64.deb";
+          sha256 = "sha256-D4xE5cXiPODlUrEqag/iHkZjEkpxY/rOABwx4xsKRV0=";
+        };
+        
+        nativeBuildInputs = with pkgs; [ dpkg makeWrapper ];
+        
+        unpackPhase = ''
+          dpkg-deb -x $src .
+        '';
+        
+        installPhase = ''
+          mkdir -p $out
+          cp -r usr/* $out/
+          
+          # Fix permissions
+          chmod -R u+w $out
+          
+          # Remove bundled libraries that cause issues
+          rm -f $out/lib/omnissa/gcc/libstdc++.so.6 || true
+          rm -f $out/lib/omnissa/libpng16.so.16 || true
+          
+          # Create wrapper that sets GTK theme
+          makeWrapper "$out/bin/horizon-client" "$out/bin/horizon-client_wrapper" \
+            --set GTK_THEME Adwaita \
+            --suffix XDG_DATA_DIRS : "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}"
+        '';
+      };
+
+      omnissaFHSEnv = pkgs.buildFHSEnv {
+        name = "omnissa-horizon-client-fhs";
+        version = horizonVersion;
+        
+        runScript = "${omnissaHorizonClientFiles}/bin/horizon-client_wrapper";
+        
+        targetPkgs = pkgs: with pkgs; [
+          at-spi2-atk
+          atk
+          cairo
+          dbus
+          file
+          fontconfig
+          freetype
+          gdk-pixbuf
+          glib
+          gtk2
+          gtk3
+          harfbuzz
+          liberation_ttf
+          libjpeg
+          libpng
+          libpulseaudio
+          libtiff
+          libudev0-shim
+          libuuid
+          libv4l
+          libxml2
+          pango
+          pcsclite
+          pixman
+          udev
+          omnissaHorizonClientFiles
+          xorg.libX11
+          xorg.libXau
+          xorg.libXcursor
+          xorg.libXext
+          xorg.libXi
+          xorg.libXinerama
+          xorg.libxkbfile
+          xorg.libXrandr
+          xorg.libXrender
+          xorg.libXScrnSaver
+          xorg.libXtst
+          zlib
+          
+          # Additional libraries
+          openssl
+          nspr
+          nss
+          alsa-lib
+          libcap
+          libusb1
+          mesa
+          libva
+          libvdpau
+          libdrm
+          gst_all_1.gstreamer
+          gst_all_1.gst-plugins-base
+          opensc
+        ];
+      };
+
+      desktopItem = pkgs.makeDesktopItem {
+        name = "omnissa-horizon-client";
+        desktopName = "Omnissa Horizon Client";
+        icon = "${omnissaHorizonClientFiles}/share/icons/horizon-client.png";
+        exec = "${omnissaFHSEnv}/bin/omnissa-horizon-client-fhs %u";
+        mimeTypes = [ "x-scheme-handler/vmware-view" ];
       };
 
       horizon-client = pkgs.stdenv.mkDerivation {
         pname = "omnissa-horizon-client";
         version = horizonVersion;
-
-        inherit src;
-        # The Debian archive is an 'ar' container → data.tar.(xz|zst|gz) inside
-        unpackPhase = ''
-          runHook preUnpack
-          ar x "$src"
-          tar -xf data.tar.*     # creates ./usr, ./etc, ...
-          runHook postUnpack
-        '';
-
-        nativeBuildInputs = [pkgs.autoPatchelfHook pkgs.patchelf pkgs.binutils pkgs.makeWrapper];
-        # Run-time deps discovered by `autoPatchelfHook`
-        buildInputs = with pkgs; [
-          gtk3 # libgtk-3-0
-          libxml2.out
-          openssl
-          nspr
-          nss
-          fontconfig
-          freetype
-          alsa-lib
-          libpulseaudio
-          libcap
-          xorg.libX11
-          xorg.libXtst
-          xorg.libXext
-          xorg.libXi
-          xorg.libXrandr
-          xorg.libxkbfile
-          xorg.libXScrnSaver # for libXss.so.1
-          libusb1
-          mesa # for libgbm.so.1
-          libva # for libva.so.1 and libva.so.2
-          libvdpau
-          libdrm
-          gst_all_1.gstreamer
-          gst_all_1.gst-plugins-base # for libgstapp-1.0.so.0 and libgstbase-1.0.so.0
-          libv4l # for libv4l2.so.0
-          pcsclite # for libpcsclite.so.1
-          file # for libmagic.so.1
-        ];
-
+        
+        dontUnpack = true;
+        
+        nativeBuildInputs = [ pkgs.copyDesktopItems ];
+        
+        desktopItems = [ desktopItem ];
+        
         installPhase = ''
           runHook preInstall
-          mkdir -p $out
-          
-          # Copy available directories
-          for dir in etc opt usr; do
-            if [ -d "$dir" ]; then
-              cp -r "$dir" $out/
-            fi
-          done
-
-          # Desktop entry & icon convenience - only if it exists
-          if [ -f usr/share/applications/vmware-view.desktop ]; then
-            install -Dm644 usr/share/applications/vmware-view.desktop \
-                          $out/share/applications/vmware-view.desktop
-          fi
-          
-          # Also copy horizon-client.desktop if it exists
-          if [ -f usr/share/applications/horizon-client.desktop ]; then
-            install -Dm644 usr/share/applications/horizon-client.desktop \
-                          $out/share/applications/horizon-client.desktop
-          fi
-
+          mkdir -p $out/bin
+          ln -s ${omnissaFHSEnv}/bin/omnissa-horizon-client-fhs $out/bin/vmware-view
+          ln -s ${omnissaFHSEnv}/bin/omnissa-horizon-client-fhs $out/bin/horizon-client
           runHook postInstall
         '';
-
-        # AutoPatchelf substitutes all RPATHs automatically
-        dontConfigure = true;
-        dontBuild = true;
-
-        autoPatchelfIgnoreMissingDeps = [
-          "libva.so.1"
-          "libva-drm.so.1"
-          "libva-x11.so.1"
-          "libxml2.so.2"
-        ];
-
-        # Fix hardcoded paths in scripts
-        preFixup = ''
-          # Fix paths in the horizon-client script
-          substituteInPlace $out/usr/bin/horizon-client \
-            --replace "/usr/lib/omnissa" "$out/usr/lib/omnissa" \
-            --replace "/usr/bin" "$out/usr/bin"
-        '';
         
-        # Create wrapper scripts
-        postFixup = ''
-          # Create bin directory
-          mkdir -p $out/bin
-          
-          # Create a wrapper script that sets up the environment properly
-          # First create a lib directory with a symlink for libxml2.so.2
-          mkdir -p $out/lib
-          ln -s ${pkgs.libxml2.out}/lib/libxml2.so $out/lib/libxml2.so.2
-          
-          cat > $out/bin/vmware-view << EOF
-          #!${pkgs.bash}/bin/bash
-          export LD_LIBRARY_PATH="$out/lib:${pkgs.libxml2.out}/lib\''${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
-          exec "$out/usr/bin/horizon-client" "\$@"
-          EOF
-          chmod +x $out/bin/vmware-view
-          
-          # Create horizon-client alias
-          ln -s $out/bin/vmware-view $out/bin/horizon-client
-          
-          # Also patch the desktop file to use our wrapper
-          if [ -f $out/share/applications/horizon-client.desktop ]; then
-            substituteInPlace $out/share/applications/horizon-client.desktop \
-              --replace "Exec=/usr/bin/horizon-client" "Exec=$out/bin/horizon-client"
-          fi
-        '';
-
         meta = with pkgs.lib; {
           description = "Omnissa (VMware) Horizon Client for Linux";
           homepage = "https://www.omnissa.com/";
@@ -154,11 +155,9 @@
       packages.default = horizon-client;
 
       devShells.default = pkgs.mkShell {
-        nativeBuildInputs = [pkgs.autoPatchelfHook pkgs.patchelf];
-        buildInputs = horizon-client.buildInputs;
+        buildInputs = [ horizon-client ];
         shellHook = ''
-          echo "Horizon dev shell – binaries available under $HORIZON_ROOT"
-          export HORIZON_ROOT=${horizon-client}
+          echo "Horizon client available as 'vmware-view' or 'horizon-client'"
         '';
       };
     })
