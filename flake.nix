@@ -43,9 +43,12 @@
           # Fix permissions
           chmod -R u+w $out
           
-          # Remove bundled libraries that cause issues
+          # Remove bundled libraries that cause issues (same as nixpkgs)
           rm -f $out/lib/omnissa/gcc/libstdc++.so.6 || true
           rm -f $out/lib/omnissa/libpng16.so.16 || true
+          
+          # Also remove the bundled libxml2 since we provide our own
+          rm -f $out/lib/omnissa/libxml2.so.2 || true
           
           # Fix hardcoded paths in the horizon-client script
           substituteInPlace $out/bin/horizon-client \
@@ -113,7 +116,7 @@
           pkgs.nspr
           pkgs.nss
           pkgs.libcap
-        ]}:${omnissaHorizonClientFiles}/lib/omnissa:${omnissaHorizonClientFiles}/lib/omnissa/horizon:${omnissaHorizonClientFiles}/lib/omnissa/gcc:$LD_LIBRARY_PATH"
+        ]}:${omnissaHorizonClientFiles}/lib/omnissa/view/crtbora:${omnissaHorizonClientFiles}/lib/omnissa:${omnissaHorizonClientFiles}/lib/omnissa/horizon:$LD_LIBRARY_PATH"
         
         # Set GTK theme
         export GTK_THEME=Adwaita
