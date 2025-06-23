@@ -51,88 +51,61 @@
           substituteInPlace $out/bin/horizon-client \
             --replace "/usr/lib/omnissa" "$out/lib/omnissa" \
             --replace "/usr/bin" "$out/bin" || true
-          
-          # Create wrapper that sets GTK theme
-          makeWrapper "$out/bin/horizon-client" "$out/bin/horizon-client_wrapper" \
-            --set GTK_THEME Adwaita \
-            --suffix XDG_DATA_DIRS : "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}"
         '';
       };
 
-      omnissaFHSEnv = pkgs.buildFHSEnv {
-        name = "omnissa-horizon-client-fhs";
-        version = horizonVersion;
+      # Create a wrapper script that sets up the library environment
+      wrapperScript = pkgs.writeScript "horizon-client-wrapper" ''
+        #!${pkgs.bash}/bin/bash
+        # Create a temporary directory for our symlinks
+        export TMPDIR=''${TMPDIR:-/tmp}
+        LIBDIR=$(mktemp -d "$TMPDIR/horizon-libs-XXXXXX")
+        trap "rm -rf $LIBDIR" EXIT
         
-        runScript = "${omnissaHorizonClientFiles}/bin/horizon-client_wrapper";
+        # Create symlink for libxml2.so.2
+        ln -s ${pkgs.libxml2.out}/lib/libxml2.so "$LIBDIR/libxml2.so.2"
         
-        targetPkgs = pkgs: with pkgs; [
-          at-spi2-atk
-          atk
-          cairo
-          dbus
-          file
-          fontconfig
-          freetype
-          gdk-pixbuf
-          glib
-          gtk2
-          gtk3
-          harfbuzz
-          liberation_ttf
-          libjpeg
-          libpng
-          libpulseaudio
-          libtiff
-          libudev0-shim
-          libuuid
-          libv4l
-          libxml2
-          pango
-          pcsclite
-          pixman
-          udev
-          omnissaHorizonClientFiles
-          xorg.libX11
-          xorg.libXau
-          xorg.libXcursor
-          xorg.libXext
-          xorg.libXi
-          xorg.libXinerama
-          xorg.libxkbfile
-          xorg.libXrandr
-          xorg.libXrender
-          xorg.libXScrnSaver
-          xorg.libXtst
-          zlib
-          
-          # Additional libraries
-          openssl
-          nspr
-          nss
-          alsa-lib
-          libcap
-          libusb1
-          mesa
-          libva
-          libvdpau
-          libdrm
-          gst_all_1.gstreamer
-          gst_all_1.gst-plugins-base
-          opensc
-          
-          # Create symlinks for compatibility
-          (pkgs.runCommand "libxml2-compat" {} ''
-            mkdir -p $out/lib
-            ln -s ${libxml2.out}/lib/libxml2.so $out/lib/libxml2.so.2
-          '')
-        ];
-      };
+        # Set up library path
+        export LD_LIBRARY_PATH="$LIBDIR:${pkgs.lib.makeLibraryPath [
+          pkgs.libxml2
+          pkgs.glib
+          pkgs.gtk3
+          pkgs.cairo
+          pkgs.pango
+          pkgs.fontconfig
+          pkgs.freetype
+          pkgs.libpulseaudio
+          pkgs.alsa-lib
+          pkgs.libva
+          pkgs.libvdpau
+          pkgs.libdrm
+          pkgs.mesa
+          pkgs.openssl
+          pkgs.nspr
+          pkgs.nss
+          pkgs.libcap
+          pkgs.xorg.libX11
+          pkgs.xorg.libXext
+          pkgs.xorg.libXi
+          pkgs.xorg.libXrandr
+          pkgs.xorg.libXScrnSaver
+          pkgs.xorg.libXtst
+          pkgs.xorg.libxkbfile
+        ]}:$LD_LIBRARY_PATH"
+        
+        # Set GTK theme
+        export GTK_THEME=Adwaita
+        export XDG_DATA_DIRS="${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:$XDG_DATA_DIRS"
+        
+        # Run the actual client
+        exec "${omnissaHorizonClientFiles}/bin/horizon-client" "$@"
+      '';
 
       desktopItem = pkgs.makeDesktopItem {
         name = "omnissa-horizon-client";
         desktopName = "Omnissa Horizon Client";
         icon = "${omnissaHorizonClientFiles}/share/icons/horizon-client.png";
-        exec = "${omnissaFHSEnv}/bin/omnissa-horizon-client-fhs %u";
+        exec = "${wrapperScript} %u";
         mimeTypes = [ "x-scheme-handler/vmware-view" ];
       };
 
@@ -149,8 +122,8 @@
         installPhase = ''
           runHook preInstall
           mkdir -p $out/bin
-          ln -s ${omnissaFHSEnv}/bin/omnissa-horizon-client-fhs $out/bin/vmware-view
-          ln -s ${omnissaFHSEnv}/bin/omnissa-horizon-client-fhs $out/bin/horizon-client
+          ln -s ${wrapperScript} $out/bin/vmware-view
+          ln -s ${wrapperScript} $out/bin/horizon-client
           runHook postInstall
         '';
         
