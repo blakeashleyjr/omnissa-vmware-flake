@@ -67,16 +67,43 @@
         
         # Set up library path
         export LD_LIBRARY_PATH="$LIBDIR:${pkgs.lib.makeLibraryPath [
-          pkgs.libxml2
-          pkgs.glib
-          pkgs.gtk3
+          pkgs.at-spi2-atk
           pkgs.atk
-          pkgs.gdk-pixbuf
           pkgs.cairo
-          pkgs.pango
+          pkgs.dbus
+          pkgs.file
           pkgs.fontconfig
           pkgs.freetype
+          pkgs.gdk-pixbuf
+          pkgs.glib
+          pkgs.gtk2
+          pkgs.gtk3-x11
+          pkgs.harfbuzz
+          pkgs.liberation_ttf
+          pkgs.libjpeg
+          pkgs.libpng
           pkgs.libpulseaudio
+          pkgs.libtiff
+          pkgs.libudev0-shim
+          pkgs.libuuid
+          pkgs.libv4l
+          pkgs.libxml2
+          pkgs.pango
+          pkgs.pcsclite
+          pkgs.pixman
+          pkgs.udev
+          pkgs.xorg.libX11
+          pkgs.xorg.libXau
+          pkgs.xorg.libXcursor
+          pkgs.xorg.libXext
+          pkgs.xorg.libXi
+          pkgs.xorg.libXinerama
+          pkgs.xorg.libxkbfile
+          pkgs.xorg.libXrandr
+          pkgs.xorg.libXrender
+          pkgs.xorg.libXScrnSaver
+          pkgs.xorg.libXtst
+          pkgs.zlib
           pkgs.alsa-lib
           pkgs.libva
           pkgs.libvdpau
@@ -86,13 +113,6 @@
           pkgs.nspr
           pkgs.nss
           pkgs.libcap
-          pkgs.xorg.libX11
-          pkgs.xorg.libXext
-          pkgs.xorg.libXi
-          pkgs.xorg.libXrandr
-          pkgs.xorg.libXScrnSaver
-          pkgs.xorg.libXtst
-          pkgs.xorg.libxkbfile
         ]}:$LD_LIBRARY_PATH"
         
         # Set GTK theme
