@@ -120,9 +120,13 @@
           mkdir -p $out/bin
           
           # Create a wrapper script that sets up the environment properly
+          # First create a lib directory with a symlink for libxml2.so.2
+          mkdir -p $out/lib
+          ln -s ${pkgs.libxml2.out}/lib/libxml2.so $out/lib/libxml2.so.2
+          
           cat > $out/bin/vmware-view << EOF
           #!${pkgs.bash}/bin/bash
-          export LD_LIBRARY_PATH="${pkgs.libxml2.out}/lib\''${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
+          export LD_LIBRARY_PATH="$out/lib:${pkgs.libxml2.out}/lib\''${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
           exec "$out/usr/bin/horizon-client" "\$@"
           EOF
           chmod +x $out/bin/vmware-view
