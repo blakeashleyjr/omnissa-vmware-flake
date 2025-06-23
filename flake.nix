@@ -47,7 +47,14 @@
           libpulseaudio
           libcap
           xorg.libX11 xorg.libXtst xorg.libXext xorg.libXi xorg.libXrandr
+          xorg.libxkbfile
           libusb1
+          mesa  # for libgbm.so.1
+          libva  # for libva.so.1 and libva.so.2
+          libvdpau
+          libdrm
+          gstreamer
+          gst-plugins-base  # for libgstapp-1.0.so.0 and libgstbase-1.0.so.0
         ];
 
         installPhase = ''
