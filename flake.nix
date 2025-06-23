@@ -26,11 +26,12 @@
         version = horizonVersion;
 
         inherit src;
-        sourceRoot = ".";
         # The Debian archive is an 'ar' container → data.tar.(xz|zst|gz) inside
         unpackPhase = ''
+          runHook preUnpack
           ar x "$src"
           tar -xf data.tar.*     # creates ./usr, ./etc, ...
+          runHook postUnpack
         '';
 
         nativeBuildInputs = [ pkgs.autoPatchelfHook pkgs.patchelf pkgs.binutils ];
@@ -50,11 +51,27 @@
         ];
 
         installPhase = ''
+          runHook preInstall
           mkdir -p $out
-          cp -r etc opt usr $out/
-          # Desktop entry & icon convenience
-          install -Dm644 usr/share/applications/vmware-view.desktop \
-                        $out/share/applications/vmware-view.desktop
+          
+          # Debug: show what's available
+          echo "Contents of build directory:"
+          ls -la
+          
+          # Copy available directories
+          for dir in etc opt usr; do
+            if [ -d "$dir" ]; then
+              cp -r "$dir" $out/
+            fi
+          done
+          
+          # Desktop entry & icon convenience - only if it exists
+          if [ -f usr/share/applications/vmware-view.desktop ]; then
+            install -Dm644 usr/share/applications/vmware-view.desktop \
+                          $out/share/applications/vmware-view.desktop
+          fi
+          
+          runHook postInstall
         '';
 
         # AutoPatchelf substitutes all RPATHs automatically
