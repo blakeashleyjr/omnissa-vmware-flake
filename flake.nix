@@ -101,6 +101,7 @@
           "libva.so.1"
           "libva-drm.so.1"
           "libva-x11.so.1"
+          "libxml2.so.2"
         ];
 
         # Create wrapper scripts
