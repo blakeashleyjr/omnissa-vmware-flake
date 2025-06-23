@@ -108,11 +108,32 @@
           # Create bin directory
           mkdir -p $out/bin
           
-          # Create a wrapper for the main executable
-          makeWrapper $out/usr/lib/vmware/view/bin/vmware-view $out/bin/vmware-view \
-            --prefix LD_LIBRARY_PATH : "${pkgs.libxml2.out}/lib"
+          # Find the actual executable
+          echo "Looking for executables..."
+          find $out -name "vmware-view" -type f -executable || true
+          find $out -name "horizon-client" -type f -executable || true
           
-          # Also create horizon-client alias
+          # Check common locations
+          if [ -x "$out/usr/lib/vmware/view/bin/vmware-view" ]; then
+            echo "Found at usr/lib/vmware/view/bin/vmware-view"
+            makeWrapper $out/usr/lib/vmware/view/bin/vmware-view $out/bin/vmware-view \
+              --prefix LD_LIBRARY_PATH : "${pkgs.libxml2.out}/lib"
+          elif [ -x "$out/usr/bin/vmware-view" ]; then
+            echo "Found at usr/bin/vmware-view"
+            makeWrapper $out/usr/bin/vmware-view $out/bin/vmware-view \
+              --prefix LD_LIBRARY_PATH : "${pkgs.libxml2.out}/lib"
+          elif [ -x "$out/usr/lib/omnissa/horizon/bin/horizon-client" ]; then
+            echo "Found at usr/lib/omnissa/horizon/bin/horizon-client"
+            makeWrapper $out/usr/lib/omnissa/horizon/bin/horizon-client $out/bin/vmware-view \
+              --prefix LD_LIBRARY_PATH : "${pkgs.libxml2.out}/lib"
+          else
+            echo "ERROR: Could not find executable!"
+            echo "Contents of $out:"
+            find $out -type f -name "*view*" -o -name "*horizon*" | head -20
+            exit 1
+          fi
+          
+          # Create horizon-client alias
           ln -s $out/bin/vmware-view $out/bin/horizon-client
         '';
 
