@@ -70,6 +70,7 @@
           pkgs.libxml2
           pkgs.glib
           pkgs.gtk3
+          pkgs.atk
           pkgs.cairo
           pkgs.pango
           pkgs.fontconfig
