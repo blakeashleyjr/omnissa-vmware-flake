@@ -37,7 +37,7 @@
           runHook postUnpack
         '';
 
-        nativeBuildInputs = [pkgs.autoPatchelfHook pkgs.patchelf pkgs.binutils];
+        nativeBuildInputs = [pkgs.autoPatchelfHook pkgs.patchelf pkgs.binutils pkgs.makeWrapper];
         # Run-time deps discovered by `autoPatchelfHook`
         buildInputs = with pkgs; [
           gtk3 # libgtk-3-0
@@ -101,8 +101,20 @@
           "libva.so.1"
           "libva-drm.so.1"
           "libva-x11.so.1"
-          "libxml2.so.2"
         ];
+
+        # Create wrapper scripts
+        postFixup = ''
+          # Create bin directory
+          mkdir -p $out/bin
+          
+          # Create a wrapper for the main executable
+          makeWrapper $out/usr/lib/vmware/view/bin/vmware-view $out/bin/vmware-view \
+            --prefix LD_LIBRARY_PATH : "${pkgs.libxml2.out}/lib"
+          
+          # Also create horizon-client alias
+          ln -s $out/bin/vmware-view $out/bin/horizon-client
+        '';
 
         meta = with pkgs.lib; {
           description = "Omnissa (VMware) Horizon Client for Linux";
