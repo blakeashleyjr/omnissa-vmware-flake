@@ -38,6 +38,7 @@
         installPhase = ''
           mkdir -p $out
           cp -r usr/* $out/
+          cp -r etc $out/ || true
           
           # Fix permissions
           chmod -R u+w $out
@@ -45,6 +46,11 @@
           # Remove bundled libraries that cause issues
           rm -f $out/lib/omnissa/gcc/libstdc++.so.6 || true
           rm -f $out/lib/omnissa/libpng16.so.16 || true
+          
+          # Fix hardcoded paths in the horizon-client script
+          substituteInPlace $out/bin/horizon-client \
+            --replace "/usr/lib/omnissa" "$out/lib/omnissa" \
+            --replace "/usr/bin" "$out/bin" || true
           
           # Create wrapper that sets GTK theme
           makeWrapper "$out/bin/horizon-client" "$out/bin/horizon-client_wrapper" \
@@ -113,6 +119,12 @@
           gst_all_1.gstreamer
           gst_all_1.gst-plugins-base
           opensc
+          
+          # Create symlinks for compatibility
+          (pkgs.runCommand "libxml2-compat" {} ''
+            mkdir -p $out/lib
+            ln -s ${libxml2.out}/lib/libxml2.so $out/lib/libxml2.so.2
+          '')
         ];
       };
 
