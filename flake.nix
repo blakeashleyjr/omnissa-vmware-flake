@@ -113,7 +113,7 @@
           pkgs.nspr
           pkgs.nss
           pkgs.libcap
-        ]}:$LD_LIBRARY_PATH"
+        ]}:${omnissaHorizonClientFiles}/lib/omnissa:${omnissaHorizonClientFiles}/lib/omnissa/horizon:${omnissaHorizonClientFiles}/lib/omnissa/gcc:$LD_LIBRARY_PATH"
         
         # Set GTK theme
         export GTK_THEME=Adwaita
