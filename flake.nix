@@ -53,8 +53,8 @@
           libva  # for libva.so.1 and libva.so.2
           libvdpau
           libdrm
-          gstreamer
-          gst-plugins-base  # for libgstapp-1.0.so.0 and libgstbase-1.0.so.0
+          gst_all_1.gstreamer
+          gst_all_1.gst-plugins-base  # for libgstapp-1.0.so.0 and libgstbase-1.0.so.0
         ];
 
         installPhase = ''
