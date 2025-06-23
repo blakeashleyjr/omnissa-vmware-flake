@@ -72,11 +72,7 @@
         installPhase = ''
           runHook preInstall
           mkdir -p $out
-
-          # Debug: show what's available
-          echo "Contents of build directory:"
-          ls -la
-
+          
           # Copy available directories
           for dir in etc opt usr; do
             if [ -d "$dir" ]; then
@@ -107,7 +103,6 @@
           "libva.so.1"
           "libva-drm.so.1"
           "libva-x11.so.1"
-          "libxml2.so.2"
         ];
 
         # Fix hardcoded paths in scripts
@@ -123,37 +118,22 @@
           # Create bin directory
           mkdir -p $out/bin
           
-          # Find the actual executable
-          echo "Looking for executables..."
-          find $out -name "vmware-view" -type f -executable || true
-          find $out -name "horizon-client" -type f -executable || true
-          
-          # Check common locations
-          if [ -x "$out/usr/bin/horizon-client" ]; then
-            echo "Found at usr/bin/horizon-client"
-            makeWrapper $out/usr/bin/horizon-client $out/bin/vmware-view \
-              --prefix LD_LIBRARY_PATH : "${pkgs.libxml2.out}/lib"
-          elif [ -x "$out/usr/lib/omnissa/horizon/bin/horizon-client" ]; then
-            echo "Found at usr/lib/omnissa/horizon/bin/horizon-client"
-            makeWrapper $out/usr/lib/omnissa/horizon/bin/horizon-client $out/bin/vmware-view \
-              --prefix LD_LIBRARY_PATH : "${pkgs.libxml2.out}/lib"
-          elif [ -x "$out/usr/lib/vmware/view/bin/vmware-view" ]; then
-            echo "Found at usr/lib/vmware/view/bin/vmware-view"
-            makeWrapper $out/usr/lib/vmware/view/bin/vmware-view $out/bin/vmware-view \
-              --prefix LD_LIBRARY_PATH : "${pkgs.libxml2.out}/lib"
-          elif [ -x "$out/usr/bin/vmware-view" ]; then
-            echo "Found at usr/bin/vmware-view"
-            makeWrapper $out/usr/bin/vmware-view $out/bin/vmware-view \
-              --prefix LD_LIBRARY_PATH : "${pkgs.libxml2.out}/lib"
-          else
-            echo "ERROR: Could not find executable!"
-            echo "Contents of $out:"
-            find $out -type f -name "*view*" -o -name "*horizon*" | head -20
-            exit 1
-          fi
+          # Create a wrapper script that sets up the environment properly
+          cat > $out/bin/vmware-view << EOF
+          #!${pkgs.bash}/bin/bash
+          export LD_LIBRARY_PATH="${pkgs.libxml2.out}/lib\''${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
+          exec "$out/usr/bin/horizon-client" "\$@"
+          EOF
+          chmod +x $out/bin/vmware-view
           
           # Create horizon-client alias
           ln -s $out/bin/vmware-view $out/bin/horizon-client
+          
+          # Also patch the desktop file to use our wrapper
+          if [ -f $out/share/applications/horizon-client.desktop ]; then
+            substituteInPlace $out/share/applications/horizon-client.desktop \
+              --replace "Exec=/usr/bin/horizon-client" "Exec=$out/bin/horizon-client"
+          fi
         '';
 
         meta = with pkgs.lib; {
